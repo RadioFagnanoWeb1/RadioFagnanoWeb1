@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>RadioFagnanoWeb Mini Player</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: transparent;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    #mini-player {
+      background: rgba(14, 11, 90, 0.85);
+      padding: 15px;
+      width: 260px;
+      text-align: center;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      border: 2px solid;
+      border-image: linear-gradient(45deg, #ff416c, #ff4b2b, #1dd1a1, #54a0ff) 1;
+      border-radius: 0;
+    }
+
+    #mini-player img {
+      width: 100%;
+      height: auto;
+      border-radius: 0;
+      margin-bottom: 10px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+      transition: transform 0.3s ease;
+    }
+
+    #mini-player img:hover {
+      transform: scale(1.03);
+    }
+
+    .title-wrapper {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: bold;
+      font-size: 1em;
+      margin: 5px 0;
+    }
+
+    .bar {
+      font-size: 1.2em;
+      color: #1dd1a1;
+      padding: 0 4px;
+    }
+
+    .scrolling-title-container {
+      overflow: hidden;
+      white-space: nowrap;
+      width: 100%;
+      text-align: left;
+    }
+
+    .scrolling-title {
+      display: inline-block;
+      animation: scroll-left 10s linear infinite;
+      padding-left: 100%;
+    }
+
+    @keyframes scroll-left {
+      0% {
+        transform: translateX(0%);
+      }
+      100% {
+        transform: translateX(-100%);
+      }
+    }
+
+    .artist {
+      font-size: 0.9em;
+      color: #ccc;
+      margin-top: 5px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    #station-name {
+      margin-top: 10px;
+      font-size: 0.95em;
+      color: #1dd1a1;
+      font-weight: bold;
+      letter-spacing: 1px;
+    }
+  </style>
+</head>
+<body>
+  <div id="mini-player">
+    <img id="mini-cover" src="https://i.postimg.cc/7Z3gVFd0/sdsdsssdd.png" alt="Cover" />
+    
+    <div class="title-wrapper">
+      <span class="bar">|</span>
+      <div class="scrolling-title-container">
+        <div class="scrolling-title" id="mini-title">Caricamento...</div>
+      </div>
+      <span class="bar">|</span>
+    </div>
+    
+    <div class="artist" id="mini-artist"></div>
+    <div id="station-name">RADIOFAGNANOWEB</div>
+  </div>
+
+  <script>
+    const nowPlayingUrl = "https://zenoplay.zenomedia.com/api/zenofm/nowplaying/1d0ry230zf8uv/";
+    const defaultImage = "https://i.postimg.cc/7Z3gVFd0/sdsdsssdd.png";
+    const coverImg = document.getElementById('mini-cover');
+    const titleElem = document.getElementById('mini-title');
+    const artistElem = document.getElementById('mini-artist');
+
+    async function fetchNowPlaying() {
+      try {
+        const response = await fetch(nowPlayingUrl);
+        const data = await response.json();
+
+        const title = data?.title?.trim() || "Sconosciuto";
+        const artist = data?.artist?.trim();
+
+        titleElem.textContent = title;
+
+        if (artist) {
+          artistElem.textContent = artist;
+          artistElem.style.display = 'block';
+        } else {
+          artistElem.textContent = "";
+          artistElem.style.display = 'none';
+        }
+
+        await fetchCover(title, artist);
+      } catch (error) {
+        console.error("Errore nel caricamento dei dati:", error);
+        titleElem.textContent = "Titolo non disponibile";
+        artistElem.textContent = "";
+        resetToDefault();
+      }
+    }
+
+    async function fetchCover(title, artist) {
+      if (!title) {
+        resetToDefault();
+        return;
+      }
+
+      const query = encodeURIComponent(artist ? `${title} ${artist}` : title);
+      const proxy = "https://corsproxy.io/?";
+      const itunesUrl = `${proxy}https://itunes.apple.com/search?term=${query}&limit=1&entity=song`;
+
+      try {
+        const response = await fetch(itunesUrl);
+        const data = await response.json();
+
+        if (data.results && data.results.length > 0) {
+          const coverUrl = data.results[0].artworkUrl100.replace('100x100', '300x300');
+          coverImg.src = coverUrl;
+        } else {
+          console.warn("Copertina non trovata su iTunes");
+          resetToDefault();
+        }
+      } catch (error) {
+        console.error("Errore nella richiesta iTunes:", error);
+        resetToDefault();
+      }
+    }
+
+    function resetToDefault() {
+      coverImg.src = defaultImage;
+    }
+
+    fetchNowPlaying();
+    setInterval(fetchNowPlaying, 20000);
+  </script>
+</body>
+</html>
